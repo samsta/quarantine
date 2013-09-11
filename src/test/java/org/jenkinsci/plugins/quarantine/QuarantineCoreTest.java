@@ -215,6 +215,22 @@ public class QuarantineCoreTest extends HudsonTestCase {
    	
     }
     
+    public void testQuarantineStatusNotLostIfTestNotRun() throws Exception
+    {
+    	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
+    	assertTrue(build.getResult() != Result.SUCCESS);
+    	
+    	TestResult tr = build.getAction(TestResultAction.class).getResult();
+    	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
+    	action.quarantine("user1","reason");
+    	
+    	build = runBuildWithJUnitResult("junit-1-failure-missing.xml");
+    	assertTrue(build.getResult() == Result.SUCCESS);
+    	
+    	build = runBuildWithJUnitResult("junit-1-failure.xml");
+    	assertTrue(build.getResult() == Result.SUCCESS);
+    }
+    
     public void testQuarantinedTestsAreInReport() throws Exception  
     {
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");

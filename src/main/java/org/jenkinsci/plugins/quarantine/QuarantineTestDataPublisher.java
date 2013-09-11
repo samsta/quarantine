@@ -15,8 +15,6 @@ import hudson.tasks.junit.TestResult;
 import hudson.tasks.junit.TestResultAction;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -34,21 +32,42 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
 			BuildListener listener, TestResult testResult) {
 		
 		Data data = new Data(build);
-
-
 		
 		for (SuiteResult suite: testResult.getSuites())
 		{
 			for (CaseResult result: suite.getCases()) {
+				QuarantineTestAction previousAction = null;
 				CaseResult previous = result.getPreviousResult();
-				if (previous != null) {
-					QuarantineTestAction previousAction = previous.getTestAction(QuarantineTestAction.class);
-
-					if (previousAction != null && previousAction.isQuarantined()) {
-						QuarantineTestAction action = new QuarantineTestAction(data, result.getId());
-						action.quarantine(previousAction);
-						data.addQuarantine(result.getId(), action);
+				
+				if (previous != null)
+				{
+					previousAction = previous.getTestAction(QuarantineTestAction.class);
+				}
+				
+				// no immediate predecessor (e.g. because job failed or did not run), try and go back in build history
+				while (previous == null && build != null)
+				{
+					build = build.getPreviousCompletedBuild();
+					if (build != null)
+					{
+						listener.getLogger().
+							println("no immediate predecessor, but found previous build " + build + ", now try and find " + result.getId());
+						hudson.tasks.test.TestResult tr = build.getTestResultAction().findCorrespondingResult(result.getId());
+						if (tr != null)
+						{
+							listener.getLogger().
+								println("it is " + tr.getDisplayName());
+							previousAction = tr.getTestAction(QuarantineTestAction.class);
+							break;
+						}
 					}
+				}
+				
+				if (previousAction != null && previousAction.isQuarantined()) 
+				{
+					QuarantineTestAction action = new QuarantineTestAction(data, result.getId());
+					action.quarantine(previousAction);
+					data.addQuarantine(result.getId(), action);
 				}
 			}
 		}
