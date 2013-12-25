@@ -34,13 +34,13 @@ public class QuarantineUiTest extends HudsonTestCase {
 	protected void setUp() throws Exception {
 	    super.setUp();
 	    java.util.logging.Logger.getLogger("com.gargoylesoftware.htmlunit").setLevel(java.util.logging.Level.SEVERE);
-	    
+
 		project = createFreeStyleProject(projectName);
 	    DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers =
 	        new DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>>(project);
 	    publishers.add(new QuarantineTestDataPublisher());
 	    project.getPublishersList().add(new QuarantinableJUnitResultArchiver("*.xml",false, publishers));
-		
+
 	    hudson.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
 	    hudson.setSecurityRealm(createDummySecurityRealm());
 	}
@@ -63,14 +63,14 @@ public class QuarantineUiTest extends HudsonTestCase {
 		return runBuildWithJUnitResult(xmlFileName).getAction(TestResultAction.class).getResult();
 	}
 
-	
-	
+
+
 	public void testTextSummaryForUnquarantinedTestAuthenticated()
 			throws Exception {
 				FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
 				TestResult tr = build.getAction(TestResultAction.class).getResult();
 				HtmlPage page = whenNavigatingToTestCase(tr.getSuite("SuiteA").getCase("TestA"),true);
-				
+
 				assertTrue(pageShowsText(page,"This test was not quarantined. Quarantine it."));
 			}
 
@@ -79,7 +79,7 @@ public class QuarantineUiTest extends HudsonTestCase {
 				FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
 				TestResult tr = build.getAction(TestResultAction.class).getResult();
 				HtmlPage page = whenNavigatingToTestCase(tr.getSuite("SuiteA").getCase("TestA"),false);
-				
+
 				assertTrue(pageShowsText(page,"This test was not quarantined."));
 				assertFalse(pageShowsText(page,"Quarantine it."));
 			}
@@ -89,7 +89,7 @@ public class QuarantineUiTest extends HudsonTestCase {
 		TestResult tr = build.getAction(TestResultAction.class).getResult();
 		HtmlPage page = whenNavigatingToTestCase(tr.getSuite("SuiteA").getCase("TestA"),true);
 		whenQuarantiningTestOnPage(page);
-		
+
 		page = whenNavigatingToTestCase(tr.getSuite("SuiteA").getCase("TestA"),false);
 		assertTrue(pageShowsText(page,"This test was quarantined by user1"));
 	}
@@ -97,10 +97,11 @@ public class QuarantineUiTest extends HudsonTestCase {
 	public void testCanNavigateToQuarantineReport() throws Exception {
 		FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
 		WebClient wc = new WebClient();
+		wc.login("user1", "user1");
 	    HtmlPage page = wc.goTo("quarantine/");
 	    assertNotNull(page);
 	}
-	
+
 	private HtmlPage whenNavigatingToTestCase(CaseResult testCase, boolean authenticate)
 			throws Exception, IOException, SAXException {
 				WebClient wc = new WebClient();
@@ -117,12 +118,15 @@ public class QuarantineUiTest extends HudsonTestCase {
 	    HtmlForm form = page.getFormByName("quarantine");
 	    HtmlTextArea textArea = (HtmlTextArea) last(form.selectNodes(".//textarea"));
 	    textArea.setText(quarantineText);
-	    
+
 	    form.submit((HtmlButton) last(form.selectNodes(".//button")));
 	}
 
 	private boolean pageShowsText(HtmlPage page, String text) {
-		return page.asText().indexOf(text) != -1;
+		boolean found = page.asText().indexOf(text) != -1;
+		System.out.println("didn't find text <" + text + "> in the following page:");
+		System.out.println(page.asText());
+		return found;
 	}
-	
+
 }

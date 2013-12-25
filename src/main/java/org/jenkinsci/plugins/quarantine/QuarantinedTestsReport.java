@@ -10,10 +10,7 @@ import hudson.model.View;
 import hudson.tasks.junit.SuiteResult;
 import hudson.tasks.junit.TestResultAction;
 import hudson.tasks.junit.CaseResult;
-import hudson.tasks.junit.History;
 import hudson.tasks.test.TestResult;
-import hudson.util.RunList;
-
 import java.util.ArrayList;
 import java.util.List;
 

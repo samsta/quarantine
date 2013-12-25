@@ -1,18 +1,18 @@
 /*
  * The MIT License
- * 
+ *
  * Copyright (c) 2004-2009, Tom Huybrechts
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -41,6 +41,10 @@ import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import java.io.IOException;
+import java.util.List;
+import org.jvnet.mock_javamail.*;
+import javax.mail.Message;
+import org.junit.Test;
 
 public class QuarantineCoreTest extends HudsonTestCase {
 	private String projectName = "x";
@@ -51,13 +55,13 @@ public class QuarantineCoreTest extends HudsonTestCase {
 	protected void setUp() throws Exception {
 	    super.setUp();
 	    java.util.logging.Logger.getLogger("com.gargoylesoftware.htmlunit").setLevel(java.util.logging.Level.SEVERE);
-	    
+
 		project = createFreeStyleProject(projectName);
 	    DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers =
 	        new DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>>(project);
 	    publishers.add(new QuarantineTestDataPublisher());
 	    project.getPublishersList().add(new QuarantinableJUnitResultArchiver("*.xml",false, publishers));
-		
+
 	    hudson.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
 	    hudson.setSecurityRealm(createDummySecurityRealm());
 	}
@@ -80,41 +84,38 @@ public class QuarantineCoreTest extends HudsonTestCase {
 		return runBuildWithJUnitResult(xmlFileName).getAction(TestResultAction.class).getResult();
 	}
 
-	
-	
-	
 	public void testAllTestsHaveQuarantineAction() throws Exception {
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
-    	
+
     	for (SuiteResult suite: tr.getSuites())
     	{
 			for (CaseResult result: suite.getCases())
 			{
 				assertNotNull(result.getTestAction(QuarantineTestAction.class));
 			}
-    	}		
+    	}
     }
 
 	public void testNoTestsHaveQuarantineActionForStandardPublisher() throws Exception {
 		project.getPublishersList().remove(QuarantinableJUnitResultArchiver.class);
-		
+
 	    DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers =
 	        new DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>>(project);
 	    publishers.add(new QuarantineTestDataPublisher());
 	    project.getPublishersList().add(new JUnitResultArchiver("*.xml",false, publishers));
 
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
-    	
+
     	for (SuiteResult suite: tr.getSuites())
     	{
 			for (CaseResult result: suite.getCases())
 			{
 				assertNull(result.getTestAction(QuarantineTestAction.class));
 			}
-    	}		
+    	}
     }
-	
-	
+
+
 	public void testQuarantineSetAndRelease() throws Exception {
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
@@ -123,14 +124,14 @@ public class QuarantineCoreTest extends HudsonTestCase {
         action.release();
         assertFalse(action.isQuarantined());
 	}
-	
+
     public void testQuarantineIsStickyOnFailingTest() throws Exception {
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
 
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
     	action.quarantine("user1", "reason");
         assertTrue(action.isQuarantined());
-    	
+
     	tr = getResultsFromJUnitResult("junit-1-failure.xml");
     	QuarantineTestAction action2 = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
 
@@ -139,14 +140,14 @@ public class QuarantineCoreTest extends HudsonTestCase {
         assertEquals(action.quarantinedByName(), action2.quarantinedByName());
 
     }
-    
+
     public void testQuarantineIsStickyOnPassingTest() throws Exception {
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
 
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestA").getTestAction(QuarantineTestAction.class);
     	action.quarantine("user1", "reason");
         assertTrue(action.isQuarantined());
-    	
+
     	tr = getResultsFromJUnitResult("junit-1-failure.xml");
     	QuarantineTestAction action2 = tr.getSuite("SuiteA").getCase("TestA").getTestAction(QuarantineTestAction.class);
 
@@ -155,30 +156,30 @@ public class QuarantineCoreTest extends HudsonTestCase {
         assertEquals(action.quarantinedByName(), action2.quarantinedByName());
 
     }
-    
+
     public void testResultIsOnlyMarkedAsLatestIfLatest() throws Exception {
     	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
     	TestResult tr1 = build.getAction(TestResultAction.class).getResult();
     	QuarantineTestAction action1 = tr1.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
-    	
+
     	assertTrue(action1.isLatestResult());
-    	
-    	build = runBuildWithJUnitResult("junit-1-failure.xml");    	
+
+    	build = runBuildWithJUnitResult("junit-1-failure.xml");
     	TestResult tr2 = build.getAction(TestResultAction.class).getResult();
     	QuarantineTestAction action2 = tr2.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
 
     	assertFalse(action1.isLatestResult());
     	assertTrue(action2.isLatestResult());
     }
-    
+
     public void testQuarantiningMakesFinalResultPass() throws Exception  {
-    	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");    	
+    	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() != Result.SUCCESS);
-    	
+
     	TestResult tr = build.getAction(TestResultAction.class).getResult();
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
     	action.quarantine("user1","reason");
-    	
+
     	build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() == Result.SUCCESS);
     }
@@ -186,11 +187,11 @@ public class QuarantineCoreTest extends HudsonTestCase {
     public void testQuarantiningMakesFinalResultFailIfAnotherTestFails() throws Exception  {
     	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() != Result.SUCCESS);
-    	
+
     	TestResult tr = build.getAction(TestResultAction.class).getResult();
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
     	action.quarantine("user1","reason");
-    	
+
     	build = runBuildWithJUnitResult("junit-2-failures.xml");
     	assertTrue(build.getResult() != Result.SUCCESS);
     }
@@ -198,48 +199,48 @@ public class QuarantineCoreTest extends HudsonTestCase {
     public void testQuarantiningMakesFinalResultFailIfQuarantineReleased() throws Exception  {
     	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() != Result.SUCCESS);
-    	
+
     	TestResult tr = build.getAction(TestResultAction.class).getResult();
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
     	action.quarantine("user1","reason");
-    	
+
     	build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() == Result.SUCCESS);
     	tr = build.getAction(TestResultAction.class).getResult();
     	action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
     	action.release();
-    	
+
     	build = runBuildWithJUnitResult("junit-1-failure.xml");
     	System.out.println("result is " + build.getResult());
     	assertTrue(build.getResult() != Result.SUCCESS);
-   	
+
     }
-    
+
     public void testQuarantineStatusNotLostIfTestNotRun() throws Exception
     {
     	FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() != Result.SUCCESS);
-    	
+
     	TestResult tr = build.getAction(TestResultAction.class).getResult();
     	QuarantineTestAction action = tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class);
     	action.quarantine("user1","reason");
-    	
+
     	build = runBuildWithJUnitResult("junit-1-failure-missing.xml");
     	assertTrue(build.getResult() == Result.SUCCESS);
-    	
+
     	build = runBuildWithJUnitResult("junit-1-failure.xml");
     	assertTrue(build.getResult() == Result.SUCCESS);
     }
-    
-    public void testQuarantinedTestsAreInReport() throws Exception  
+
+    public void testQuarantinedTestsAreInReport() throws Exception
     {
     	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
-    	
+
     	tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class).quarantine("user1","reason");
     	tr.getSuite("SuiteB").getCase("TestA").getTestAction(QuarantineTestAction.class).quarantine("user1","reason");
-    	
+
     	QuarantinedTestsReport report = new QuarantinedTestsReport();
-    	
+
     	assertEquals(2,report.getQuarantinedTests().size());
     	assertTrue(report.getQuarantinedTests().contains(tr.getSuite("SuiteA").getCase("TestB")));
     	assertTrue(report.getQuarantinedTests().contains(tr.getSuite("SuiteB").getCase("TestA")));
@@ -252,19 +253,42 @@ public class QuarantineCoreTest extends HudsonTestCase {
 
     	QuarantinedTestsReport report = new QuarantinedTestsReport();
     	assertEquals(1,report.getNumberOfSuccessivePasses(report.getQuarantinedTests().get(0)));
-    	
+
     	runBuildWithJUnitResult("junit-no-failure.xml");
     	report = new QuarantinedTestsReport();
     	assertEquals(2,report.getNumberOfSuccessivePasses(report.getQuarantinedTests().get(0)));
-   	
+
     	runBuildWithJUnitResult("junit-1-failure.xml");
     	report = new QuarantinedTestsReport();
     	assertEquals(0,report.getNumberOfSuccessivePasses(report.getQuarantinedTests().get(0)));
-   	
+
     	runBuildWithJUnitResult("junit-no-failure.xml");
     	report = new QuarantinedTestsReport();
     	assertEquals(1,report.getNumberOfSuccessivePasses(report.getQuarantinedTests().get(0)));
     }
 
-    
+    public void testSendsEmailWhenQuarantinedFails() throws Exception
+    {
+    	Mailbox.clearAll();
+    	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
+    	tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class).quarantine("user1", "reason");
+
+    	getResultsFromJUnitResult("junit-1-failure.xml");
+
+    	List<Message> inbox = Mailbox.get("foo@bar.com");
+    	assertEquals(1,inbox.size());
+    }
+
+    public void testDoesntEmailWhenQuarantinedPasses() throws Exception
+    {
+    	Mailbox.clearAll();
+    	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
+    	tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class).quarantine("user1", "reason");
+
+    	getResultsFromJUnitResult("junit-no-failure.xml");
+
+    	List<Message> inbox = Mailbox.get("foo@bar.com");
+    	assertEquals(0,inbox.size());
+    }
+
 }

@@ -2,60 +2,46 @@ package org.jenkinsci.plugins.quarantine;
 
 import hudson.AbortException;
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.Launcher;
-import hudson.matrix.MatrixAggregatable;
-import hudson.matrix.MatrixAggregator;
-import hudson.matrix.MatrixBuild;
 import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.CheckPoint;
 import hudson.model.Descriptor;
 import hudson.model.Result;
 import hudson.model.Saveable;
-import hudson.tasks.BuildStepDescriptor;
-import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
-import hudson.tasks.Recorder;
 import hudson.tasks.junit.TestResult;
 import hudson.tasks.junit.TestDataPublisher;
 import hudson.tasks.junit.TestResultAction;
 import hudson.tasks.junit.TestResultAction.Data;
 import hudson.tasks.junit.CaseResult;
 import hudson.tasks.junit.JUnitResultArchiver;
-import hudson.tasks.test.TestResultAggregator;
-import hudson.tasks.test.TestResultProjectAction;
+import hudson.tasks.Mailer;
 import hudson.util.DescribableList;
-import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
-import org.apache.tools.ant.DirectoryScanner;
-import org.apache.tools.ant.types.FileSet;
-import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
+import javax.mail.internet.MimeMessage;
+import javax.mail.MessagingException;
+import javax.mail.Transport;
+import javax.mail.Message;
 
 public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 
 	private static final CheckPoint CHECKPOINT = new CheckPoint(
 	"JUnit result archiving");
-	
+
 	@Deprecated
 	public QuarantinableJUnitResultArchiver()
 	{
 		this("",false,null);
 	}
-	
+
 	@DataBoundConstructor
 	public QuarantinableJUnitResultArchiver(
 			String testResults,
@@ -64,22 +50,22 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 		super(testResults,keepLongStdio,testDataPublishers);
 	}
 
-	
+
 
 	/**
 	 * Because build results can only be made worse, we can't just run another recorder
 	 * straight after the JUnitResultArchiver. So we clone-and-own the
      * {@link JUnitResultArchiver#perform(AbstractBuild, Launcher, BuildListener)}
-	 * method here so we can inspect the quarantine before making the PASS/FAIL decision 
-	 * 
+	 * method here so we can inspect the quarantine before making the PASS/FAIL decision
+	 *
 	 * The build is only failed if there are failing tests that have not been put in quarantine
 	 */
-    @Override
-	public boolean perform(AbstractBuild build, Launcher launcher,
+	@Override
+    public boolean perform(AbstractBuild build, Launcher launcher,
 			BuildListener listener) throws InterruptedException, IOException {
 		listener.getLogger().println(hudson.tasks.junit.Messages.JUnitResultArchiver_Recording());
 		TestResultAction action;
-				
+
 		final String testResults = build.getEnvironment(listener).expand(this.getTestResults());
 
 		try {
@@ -126,7 +112,7 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 
 		build.getActions().add(action);
 		CHECKPOINT.report();
-		
+
 		if (action.getResult().getFailCount() > 0)
 		{
 			int quarantined = 0;
@@ -138,20 +124,38 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 					{
 						listener.getLogger().println("[Quarantine]: "+result.getFullName()+" failed but is quarantined");
 						quarantined++;
+
+						sendEmail(listener);
 					}
 				}
 			}
-			
+
 			int remaining = action.getResult().getFailCount()-quarantined;
 			listener.getLogger().println("[Quarantine]: " +remaining+ " unquarantined failures remaining");
 
 			if (remaining > 0)
 				build.setResult(Result.UNSTABLE);
 		}
+
 		return true;
 	}
 
-	
+    public void sendEmail(BuildListener listener) {
+    	MimeMessage msg = new MimeMessage(Mailer.descriptor().createSession());
+    	try {
+			msg.setRecipients(Message.RecipientType.TO,"foo@bar.com");
+			msg.setContent("foo","text/html");
+	    	Transport.send(msg);
+			listener.getLogger().println("[Quarantine]: sent email");
+			System.out.println("q sent email");
+		} catch (MessagingException e) {
+			// TODO Auto-generated catch block
+			listener.getLogger(). println("[Quarantine]: failed sending email: " + e.toString());
+			System.out.println("[Quarantine]: failed sending email: " + e.toString());
+		}
+    }
+
+
     @Extension
     public static class DescriptorImpl extends JUnitResultArchiver.DescriptorImpl {
 		public String getDisplayName() {

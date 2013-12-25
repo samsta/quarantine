@@ -6,7 +6,6 @@
     <version>1.509.2</version><!-- which version of Jenkins is this plugin built against? -->
   </parent>
 
-  <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>quarantine</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>hpi</packaging>
@@ -27,10 +26,30 @@
   </pluginRepositories>
 
   <properties>
-    <!--
-      explicitly specifying the latest version here because one we get from the parent POM
-      tends to lag behind a bit
-    -->
-    <maven-hpi-plugin.version>1.96</maven-hpi-plugin.version>
   </properties>
+  <dependencies>
+  	<dependency>
+  		<groupId>org.jvnet.mock-javamail</groupId>
+  		<artifactId>mock-javamail</artifactId>
+  		<version>1.9</version>
+  		<scope>test</scope>
+  	</dependency>
+  	<dependency>
+  		<groupId>javax.mail</groupId>
+  		<artifactId>mail</artifactId>
+  		<version>1.4</version>
+  		<scope>provided</scope>
+  	</dependency>
+  	<dependency>
+  		<groupId>junit</groupId>
+  		<artifactId>junit</artifactId>
+  		<version>4.11</version>
+  		<scope>test</scope>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.jenkins-ci.plugins</groupId>
+  		<artifactId>mailer</artifactId>
+  		<version>1.4</version>
+  	</dependency>
+  </dependencies>
 </project>
