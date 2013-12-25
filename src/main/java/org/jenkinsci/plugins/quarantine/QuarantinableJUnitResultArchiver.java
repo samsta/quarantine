@@ -16,7 +16,6 @@ import hudson.tasks.junit.TestResultAction;
 import hudson.tasks.junit.TestResultAction.Data;
 import hudson.tasks.junit.CaseResult;
 import hudson.tasks.junit.JUnitResultArchiver;
-import hudson.tasks.Mailer;
 import hudson.util.DescribableList;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -26,10 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.mail.internet.MimeMessage;
-import javax.mail.MessagingException;
-import javax.mail.Transport;
-import javax.mail.Message;
 
 public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 
@@ -124,8 +119,6 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 					{
 						listener.getLogger().println("[Quarantine]: "+result.getFullName()+" failed but is quarantined");
 						quarantined++;
-
-						sendEmail(listener);
 					}
 				}
 			}
@@ -139,22 +132,6 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 
 		return true;
 	}
-
-    public void sendEmail(BuildListener listener) {
-    	MimeMessage msg = new MimeMessage(Mailer.descriptor().createSession());
-    	try {
-			msg.setRecipients(Message.RecipientType.TO,"foo@bar.com");
-			msg.setContent("foo","text/html");
-	    	Transport.send(msg);
-			listener.getLogger().println("[Quarantine]: sent email");
-			System.out.println("q sent email");
-		} catch (MessagingException e) {
-			// TODO Auto-generated catch block
-			listener.getLogger(). println("[Quarantine]: failed sending email: " + e.toString());
-			System.out.println("[Quarantine]: failed sending email: " + e.toString());
-		}
-    }
-
 
     @Extension
     public static class DescriptorImpl extends JUnitResultArchiver.DescriptorImpl {

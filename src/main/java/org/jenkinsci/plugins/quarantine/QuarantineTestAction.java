@@ -19,9 +19,10 @@ import java.util.Date;
 
 import javax.servlet.ServletException;
 
+
 @ExportedBean(defaultVisibility = 2)
-public class QuarantineTestAction 
-	extends TestAction 
+public class QuarantineTestAction
+	extends TestAction
 	implements BuildBadgeAction, ProminentProjectAction
 {
 	private boolean quarantined;
@@ -29,9 +30,9 @@ public class QuarantineTestAction
 	private Date quarantineDate;
 	private String reason;
 	private String testObjectId;
-    	
+
 	protected Data owner;
-	
+
 	QuarantineTestAction(Data owner, String testObjectId) {
 		this.owner = owner;
 		this.testObjectId = testObjectId;
@@ -58,24 +59,24 @@ public class QuarantineTestAction
 	public String getDisplayName() {
 		return Messages.QuarantineTestAction_DisplayName();
 	}
-	
+
 	public String getIconFileName() {
 		return null;
 	}
 
 	public String getUrlName() {
 		return "quarantine";
-	}	
-	
+	}
+
 	public String getNoun() {
 		return Messages.QuarantineTestAction_Noun();
 	}
-	
+
 	@Exported
 	public boolean isQuarantined() {
 		return quarantined;
 	}
-	
+
 	public String quarantinedByName()
 	{
 		User user = User.get(quarantinedBy, false, Collections.emptyMap());
@@ -85,34 +86,34 @@ public class QuarantineTestAction
 			return quarantinedBy;
 		}
 	}
-	
+
 	public String getReason()
 	{
 		return reason;
 	}
-	
+
 	public Date getDate()
 	{
 		return quarantineDate;
 	}
-	
+
 	public boolean hasReason() {
 		return !StringUtils.isEmpty(reason);
 	}
-	
+
 	public String getLatestResultUrl()
 	{
 		String url = "";
 		hudson.tasks.test.TestResult tr = owner.getResultForTestId(testObjectId);
-		
+
 		if (tr != null)
 		{
 			url = tr.getOwner().getParent().getUrl() + "lastCompletedBuild/testReport" + tr.getUrl();
 		}
-		
+
 		return url;
 	}
-	
+
 	/**
 	 * Whether this is the latest result. As it does not make sense to enable
 	 * quarantining on an old result, use this to not even display the option to quarantine it
@@ -121,7 +122,7 @@ public class QuarantineTestAction
 	{
 		return owner.isLatestResult();
 	}
-	
+
 	public boolean isUserAnonymous() {
 		return Hudson.getAuthentication().getName().equals("anonymous");
 	}
@@ -132,17 +133,17 @@ public class QuarantineTestAction
 		this.quarantinedBy = quarantinedBy;
 		this.reason = reason;
 		this.quarantineDate = date;
-		owner.addQuarantine(testObjectId, this);		
+		owner.addQuarantine(testObjectId, this);
 	}
-	
+
 	public void quarantine(String quarantinedBy, String reason) {
 		quarantine(quarantinedBy,reason,new Date());
 	}
-	
+
 	public void quarantine(QuarantineTestAction action) {
 		quarantine(action.quarantinedByName(),action.getReason(),action.getDate());
 	}
-	
+
 	public void release() {
 		this.quarantined = false;
 		this.quarantinedBy = null;

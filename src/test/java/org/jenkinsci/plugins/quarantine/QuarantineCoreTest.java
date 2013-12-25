@@ -26,7 +26,9 @@ import hudson.model.FreeStyleBuild;
 import hudson.model.Result;
 import hudson.model.Descriptor;
 import hudson.model.FreeStyleProject;
+import hudson.model.User;
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
+import hudson.tasks.Mailer;
 import hudson.tasks.junit.TestDataPublisher;
 import hudson.tasks.junit.TestResult;
 import hudson.tasks.junit.SuiteResult;
@@ -45,10 +47,12 @@ import java.util.List;
 import org.jvnet.mock_javamail.*;
 import javax.mail.Message;
 import org.junit.Test;
+import hudson.tasks.Mailer;
 
 public class QuarantineCoreTest extends HudsonTestCase {
 	private String projectName = "x";
 	protected String quarantineText = "quarantineReason";
+	protected String user1Mail = "user1@mail.com";
 	protected FreeStyleProject project;
 
 	@Override
@@ -64,6 +68,9 @@ public class QuarantineCoreTest extends HudsonTestCase {
 
 	    hudson.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
 	    hudson.setSecurityRealm(createDummySecurityRealm());
+
+	    User u = User.get("user1");
+	    u.addProperty(new Mailer.UserProperty(user1Mail));
 	}
 
 	protected FreeStyleBuild runBuildWithJUnitResult(final String xmlFileName) throws Exception {
@@ -275,7 +282,7 @@ public class QuarantineCoreTest extends HudsonTestCase {
 
     	getResultsFromJUnitResult("junit-1-failure.xml");
 
-    	List<Message> inbox = Mailbox.get("foo@bar.com");
+    	List<Message> inbox = Mailbox.get(user1Mail);
     	assertEquals(1,inbox.size());
     }
 
@@ -287,8 +294,21 @@ public class QuarantineCoreTest extends HudsonTestCase {
 
     	getResultsFromJUnitResult("junit-no-failure.xml");
 
-    	List<Message> inbox = Mailbox.get("foo@bar.com");
+    	List<Message> inbox = Mailbox.get(user1Mail);
     	assertEquals(0,inbox.size());
+    }
+
+    public void testTestEmailsAreCollatedWhenMultipleQuarantinedFail() throws Exception
+    {
+    	Mailbox.clearAll();
+    	TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
+    	tr.getSuite("SuiteA").getCase("TestB").getTestAction(QuarantineTestAction.class).quarantine("user1", "reason");
+    	tr.getSuite("SuiteB").getCase("TestA").getTestAction(QuarantineTestAction.class).quarantine("user1", "reason");
+
+    	getResultsFromJUnitResult("junit-2-failures.xml");
+
+    	List<Message> inbox = Mailbox.get(user1Mail);
+    	assertEquals(1,inbox.size());
     }
 
 }
