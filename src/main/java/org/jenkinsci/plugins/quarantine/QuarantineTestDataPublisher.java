@@ -62,13 +62,18 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
 					{
 						listener.getLogger().
 							println("no immediate predecessor, but found previous build " + build + ", now try and find " + result.getId());
-						hudson.tasks.test.TestResult tr = build.getTestResultAction().findCorrespondingResult(result.getId());
-						if (tr != null)
+						if (build.getTestResultAction() != null)
 						{
 							listener.getLogger().
-								println("it is " + tr.getDisplayName());
-							previousAction = tr.getTestAction(QuarantineTestAction.class);
-							break;
+							println("build " + build + " does not have test results");
+							hudson.tasks.test.TestResult tr = build.getTestResultAction().findCorrespondingResult(result.getId());
+							if (tr != null)
+							{
+								listener.getLogger().
+									println("it is " + tr.getDisplayName());
+								previousAction = tr.getTestAction(QuarantineTestAction.class);
+								break;
+							}
 						}
 					}
 				}

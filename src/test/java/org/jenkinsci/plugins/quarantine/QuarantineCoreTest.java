@@ -73,6 +73,18 @@ public class QuarantineCoreTest extends HudsonTestCase {
 	    u.addProperty(new Mailer.UserProperty(user1Mail));
 	}
 
+	protected FreeStyleBuild addBuildFailure() throws Exception {
+		FreeStyleBuild build;
+	    project.getBuildersList().add(new TestBuilder() {
+	        public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
+	            return false;
+	        }
+	    });
+	    build = project.scheduleBuild2(0).get();
+	    project.getBuildersList().clear();
+	    return build;
+	}
+
 	protected FreeStyleBuild runBuildWithJUnitResult(final String xmlFileName) throws Exception {
 		FreeStyleBuild build;
 	    project.getBuildersList().add(new TestBuilder() {
@@ -162,6 +174,12 @@ public class QuarantineCoreTest extends HudsonTestCase {
     	assertTrue(action2.isQuarantined());
         assertEquals(action.quarantinedByName(), action2.quarantinedByName());
 
+    }
+
+    public void testDontThrowNullptrExceptionWhenNoPreviousTestData() throws Exception
+    {
+    	addBuildFailure();
+    	getResultsFromJUnitResult("junit-1-failure.xml");
     }
 
     public void testResultIsOnlyMarkedAsLatestIfLatest() throws Exception {
