@@ -17,7 +17,7 @@
 
         <j:choose>
             <j:when test="${it.isQuarantined()}">
-				<t:summary icon="${rootUrl}/plugin/claim/icons/quarantine-48x48.png">
+				<t:summary icon="${rootUrl}/plugin/quarantine/icons/quarantine-48x48.png">
             	    ${%one.quarantined(it.quarantinedByName())}
                      <i:formatDate value="${it.date}" type="both" dateStyle="medium" timeStyle="medium"/>${%.}
     		   		 <j:if test="${!it.isUserAnonymous()}">
@@ -34,7 +34,7 @@
 	 		    </t:summary>
            	</j:when>
             <j:otherwise>
-		    	<t:summary icon="${rootUrl}/plugin/claim/icons/quarantine-48x48-inactive.png">
+		    	<t:summary icon="${rootUrl}/plugin/quarantine/icons/quarantine-48x48-inactive.png">
 			        ${%not.quarantined}
 	    		    <j:if test="${!it.isUserAnonymous()}">
 	    		    	<j:if test="${it.isLatestResult()}">

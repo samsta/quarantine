@@ -1,0 +1,52 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+
+<html>
+<head>
+<style>
+th { background-color: #99f; }
+table,td,tr { border: 1px dotted #666; border-collapse: collapse; }
+</style>
+</head>
+<body>
+
+	<img src="${rootURL}/plugin/quarantine/icons/quarantine-48x48.png" />
+    <p>Hi ${user}</p>
+	<p>The following tests you have put in quarantine have failed:</p>
+
+    <table>
+    <tr>
+      <th>Job</th>
+      <th>Test Case</th>
+	  <th>Date</th>
+	  <th>Reason</th>
+	  <th>Error Details</th>
+    </tr>
+
+    <j:forEach var="r" items="${results}">
+    <tr>
+        <td>
+        	<a href="${rootURL}/${r.result.owner.parent.url}">
+	        	${r.result.owner.parent.displayName}
+	        </a>
+        </td>
+        <td>
+        	<a href="${rootURL}/${r.result.owner.parent.url}/lastCompletedBuild/testReport/${r.result.url}">
+				${r.result.fullName}
+			</a>
+        </td>
+        <td>
+        	<i:formatDate value="${r.action.date}" type="both" dateStyle="medium" timeStyle="medium"/>
+        </td>
+        <td>
+        	${r.action.reason}
+        </td>
+        <td>
+        	${r.result.errorDetails}
+        </td>
+    </tr>
+    </j:forEach>
+    </table>
+</body>
+</html>
+</j:jelly>

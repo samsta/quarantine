@@ -5,7 +5,6 @@ import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.Descriptor;
-import hudson.model.User;
 import hudson.model.Saveable;
 import hudson.tasks.junit.CaseResult;
 import hudson.tasks.junit.SuiteResult;
@@ -18,17 +17,10 @@ import hudson.tasks.junit.TestResultAction;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.kohsuke.stapler.DataBoundConstructor;
-
-import hudson.tasks.Mailer;
-import javax.mail.internet.MimeMessage;
-import javax.mail.MessagingException;
-import javax.mail.Transport;
-import javax.mail.Message;
 
 public class QuarantineTestDataPublisher extends TestDataPublisher {
 
@@ -40,8 +32,7 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
 			BuildListener listener, TestResult testResult) {
 
 		Data data = new Data(build);
-		HashMap<String,String> emailsToSend = new HashMap<String,String>();
-
+		MailNotifier notifier = new MailNotifier(listener);
 
 		for (SuiteResult suite: testResult.getSuites())
 		{
@@ -87,83 +78,15 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
 					// send email if failed
 					if (!result.isPassed())
 					{
-						prepareEmail(listener, emailsToSend, action.quarantinedByName());
+						notifier.addResult(result,action);
 					}
 				}
 			}
 		}
-		sendEmails(listener, emailsToSend);
+		notifier.sendEmails();
 		return data;
 	}
 
-	public String getEmailAddress(BuildListener listener, String username)
-	{
-		String address = null;
-		User u = User.get(username);
-		if (u == null)
-		{
-			listener.getLogger().println("failed obtaining user for name "+username);
-			System.out.println("failed obtaining user for name "+username);
-			return address;
-		}
-		Mailer.UserProperty p = u.getProperty(Mailer.UserProperty.class);
-		if (p == null)
-		{
-			listener.getLogger().println("failed obtaining email address for user "+username);
-			System.out.println("failed obtaining email address for user "+username);
-			return address;
-		}
-
-		if (p.getAddress() == null)
-		{
-			listener.getLogger().println("failed obtaining email address (is null) for user "+username);
-			System.out.println("failed obtaining email address (is null) for user "+username);
-			return address;
-		}
-
-		return p.getAddress();
-	}
-
-	public void prepareEmail(BuildListener listener, Map<String,String> emails, String username)
-	{
-    	String address = getEmailAddress(listener, username);
-
-    	if (address == null)
-    	{
-    		return;
-    	}
-
-    	String message = "";
-    	if(emails.containsKey(address))
-    	{
-    		message += emails.get(address);
-    	}
-    	message += "foo";
-
-    	emails.put(address,message);
-	}
-
-	public void sendEmails(BuildListener listener, Map<String,String> emails)
-	{
-		for (Map.Entry<String,String> entry: emails.entrySet())
-		{
-			sendEmail(listener,entry.getKey(),entry.getValue());
-		}
-	}
-
-    public void sendEmail(BuildListener listener,String address, String message) {
-    	MimeMessage msg = new MimeMessage(Mailer.descriptor().createSession());
-    	try {
-			msg.setRecipients(Message.RecipientType.TO,address);
-			msg.setContent(message,"text/html");
-	    	Transport.send(msg);
-			listener.getLogger().println("[Quarantine]: sent email to " + address);
-			System.out.println("q sent email to " + address);
-		} catch (MessagingException e) {
-			listener.getLogger(). println("[Quarantine]: failed sending email: " + e.toString());
-			System.out.println("[Quarantine]: failed sending email: " + e.toString());
-		}
-    }
 
 	public static class Data extends TestResultAction.Data implements Saveable {
 
