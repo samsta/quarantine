@@ -169,7 +169,6 @@ public class MailNotifier
 				println("[Quarantine]: unable to render message");
 				return;
 			}
-			println(message);
 			msg.setContent(message,"text/html");
 
 	    	Transport.send(msg);

@@ -5,7 +5,7 @@
 <head>
 <style>
 th { background-color: #99f; }
-table,td,tr { border: 1px dotted #666; border-collapse: collapse; }
+table,td,tr { border: 1px dotted #666; border-collapse: collapse; padding: 3px; }
 </style>
 </head>
 <body>
@@ -18,7 +18,7 @@ table,td,tr { border: 1px dotted #666; border-collapse: collapse; }
     <tr>
       <th>Job</th>
       <th>Test Case</th>
-	  <th>Date</th>
+	  <th>Quarantine Date</th>
 	  <th>Reason</th>
 	  <th>Error Details</th>
     </tr>
