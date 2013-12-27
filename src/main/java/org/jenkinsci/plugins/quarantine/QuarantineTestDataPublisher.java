@@ -24,141 +24,128 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 public class QuarantineTestDataPublisher extends TestDataPublisher {
 
-	@DataBoundConstructor
-	public QuarantineTestDataPublisher() {}
+   @DataBoundConstructor
+   public QuarantineTestDataPublisher() {
+   }
 
-	@Override
-	public Data getTestData(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener, TestResult testResult) {
+   @Override
+   public Data getTestData(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener, TestResult testResult) {
 
-		Data data = new Data(build);
-		MailNotifier notifier = new MailNotifier(listener);
+      Data data = new Data(build);
+      MailNotifier notifier = new MailNotifier(listener);
 
-		for (SuiteResult suite: testResult.getSuites())
-		{
-			for (CaseResult result: suite.getCases()) {
-				QuarantineTestAction previousAction = null;
-				CaseResult previous = result.getPreviousResult();
+      for (SuiteResult suite : testResult.getSuites()) {
+         for (CaseResult result : suite.getCases()) {
+            QuarantineTestAction previousAction = null;
+            CaseResult previous = result.getPreviousResult();
 
-				if (previous != null)
-				{
-					previousAction = previous.getTestAction(QuarantineTestAction.class);
-				}
+            if (previous != null) {
+               previousAction = previous.getTestAction(QuarantineTestAction.class);
+            }
 
-				// no immediate predecessor (e.g. because job failed or did not run), try and go back in build history
-				while (previous == null && build != null)
-				{
-					build = build.getPreviousCompletedBuild();
-					if (build != null)
-					{
-						listener.getLogger().
-							println("no immediate predecessor, but found previous build " + build + ", now try and find " + result.getId());
-						if (build.getTestResultAction() != null)
-						{
-							listener.getLogger().
-							println("build " + build + " does not have test results");
-							hudson.tasks.test.TestResult tr = build.getTestResultAction().findCorrespondingResult(result.getId());
-							if (tr != null)
-							{
-								listener.getLogger().
-									println("it is " + tr.getDisplayName());
-								previousAction = tr.getTestAction(QuarantineTestAction.class);
-								break;
-							}
-						}
-					}
-				}
+            // no immediate predecessor (e.g. because job failed or did not
+            // run), try and go back in build history
+            while (previous == null && build != null) {
+               build = build.getPreviousCompletedBuild();
+               if (build != null) {
+                  listener.getLogger().println(
+                        "no immediate predecessor, but found previous build " + build + ", now try and find "
+                              + result.getId());
+                  if (build.getTestResultAction() != null) {
+                     listener.getLogger().println("build " + build + " does not have test results");
+                     hudson.tasks.test.TestResult tr = build.getTestResultAction().findCorrespondingResult(
+                           result.getId());
+                     if (tr != null) {
+                        listener.getLogger().println("it is " + tr.getDisplayName());
+                        previousAction = tr.getTestAction(QuarantineTestAction.class);
+                        break;
+                     }
+                  }
+               }
+            }
 
-				if (previousAction != null && previousAction.isQuarantined())
-				{
-					QuarantineTestAction action = new QuarantineTestAction(data, result.getId());
-					action.quarantine(previousAction);
-					data.addQuarantine(result.getId(), action);
+            if (previousAction != null && previousAction.isQuarantined()) {
+               QuarantineTestAction action = new QuarantineTestAction(data, result.getId());
+               action.quarantine(previousAction);
+               data.addQuarantine(result.getId(), action);
 
-					// send email if failed
-					if (!result.isPassed())
-					{
-						notifier.addResult(result,action);
-					}
-				}
-			}
-		}
-		notifier.sendEmails();
-		return data;
-	}
+               // send email if failed
+               if (!result.isPassed()) {
+                  notifier.addResult(result, action);
+               }
+            }
+         }
+      }
+      notifier.sendEmails();
+      return data;
+   }
 
+   public static class Data extends TestResultAction.Data implements Saveable {
 
-	public static class Data extends TestResultAction.Data implements Saveable {
+      private Map<String, QuarantineTestAction> quarantines = new HashMap<String, QuarantineTestAction>();
 
-		private Map<String,QuarantineTestAction> quarantines = new HashMap<String,QuarantineTestAction>();
+      private final AbstractBuild<?, ?> build;
 
-		private final AbstractBuild<?,?> build;
+      public Data(AbstractBuild<?, ?> build) {
+         this.build = build;
+      }
 
-		public Data(AbstractBuild<?,?> build) {
-			this.build = build;
-		}
+      @Override
+      public List<TestAction> getTestAction(TestObject testObject) {
 
-		@Override
-		public List<TestAction> getTestAction(TestObject testObject) {
+         if (build.getParent().getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
+            // only display if QuarantinableJUnitResultArchiver chosen, to avoid
+            // confusion
+            System.out.println("not right publisher");
+            return Collections.emptyList();
+         }
 
-			if (build.getParent().getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null)
-			{
-				// only display if QuarantinableJUnitResultArchiver chosen, to avoid confusion
-				System.out.println("not right publisher");
-				return Collections.emptyList();
-			}
+         String id = testObject.getId();
+         QuarantineTestAction result = quarantines.get(id);
 
-			String id = testObject.getId();
-			QuarantineTestAction result = quarantines.get(id);
+         if (result != null) {
+            return Collections.<TestAction> singletonList(result);
+         }
 
-			if (result != null) {
-				return Collections.<TestAction>singletonList(result);
-			}
+         if (testObject instanceof CaseResult) {
+            return Collections.<TestAction> singletonList(new QuarantineTestAction(this, id));
+         }
+         return Collections.emptyList();
+      }
 
-			if (testObject instanceof CaseResult) {
-				return Collections.<TestAction>singletonList(new QuarantineTestAction(this, id));
-			}
-			return Collections.emptyList();
-		}
+      public boolean isLatestResult() {
+         return build.getParent().getLastCompletedBuild() == build;
+      }
 
-		public boolean isLatestResult()
-		{
-			return build.getParent().getLastCompletedBuild() == build;
-		}
+      public hudson.tasks.test.TestResult getResultForTestId(String testObjectId) {
+         TestResultAction action = build.getAction(TestResultAction.class);
+         if (action != null && action.getResult() != null) {
+            return action.getResult().findCorrespondingResult(testObjectId);
+         }
+         return null;
+      }
 
-		public hudson.tasks.test.TestResult getResultForTestId(String testObjectId)
-		{
-			TestResultAction action = build.getAction(TestResultAction.class);
-			if (action != null && action.getResult() != null)
-			{
-				return action.getResult().findCorrespondingResult(testObjectId);
-			}
-			return null;
-		}
+      public void save() throws IOException {
+         build.save();
+      }
 
-		public void save() throws IOException {
-			build.save();
-		}
+      public void addQuarantine(String testObjectId, QuarantineTestAction quarantine) {
+         quarantines.put(testObjectId, quarantine);
+      }
 
-		public void addQuarantine(String testObjectId,
-				QuarantineTestAction quarantine) {
-				quarantines.put(testObjectId, quarantine);
-		}
+   }
 
-	}
+   @Extension
+   public static class DescriptorImpl extends Descriptor<TestDataPublisher> {
 
-	@Extension
-	public static class DescriptorImpl extends Descriptor<TestDataPublisher> {
+      public String getHelpFile() {
+         return "/plugin/quarantine/help.html";
+      }
 
-		public String getHelpFile() {
-			return "/plugin/quarantine/help.html";
-		}
-
-		@Override
-		public String getDisplayName() {
-			return Messages.QuarantineTestDataPublisher_DisplayName();
-		}
-	}
-
+      @Override
+      public String getDisplayName() {
+         return Messages.QuarantineTestDataPublisher_DisplayName();
+      }
+   }
 
 }

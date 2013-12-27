@@ -20,82 +20,71 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class QuarantinedTestsReport implements RootAction {
 
-    public QuarantinedTestsReport() {
-    }
+   public QuarantinedTestsReport() {
+   }
 
-    public String getIconFileName() {
-        return "/plugin/quarantine/icons/quarantine-24x24.png";
-    }
+   public String getIconFileName() {
+      return "/plugin/quarantine/icons/quarantine-24x24.png";
+   }
 
-    public String getUrlName() {
-        return "/quarantine";
-    }
+   public String getUrlName() {
+      return "/quarantine";
+   }
 
+   public View getOwner() {
+      StaplerRequest request = Stapler.getCurrentRequest();
+      if (request != null) {
+         View view = request.findAncestorObject(View.class);
+         if (view != null) {
+            return view;
+         }
+      }
+      return Hudson.getInstance().getView("All");
+   }
 
-    public View getOwner() {
-    	StaplerRequest request = Stapler.getCurrentRequest();
-    	if (request != null)
-    	{
-    		View view = request.findAncestorObject(View.class);
-    		if (view != null) {
-    			return view;
-    		}
-    	}
-        return Hudson.getInstance().getView("All");
-    }
-    
-    public QuarantineTestAction getAction(CaseResult test)
-    {
-    	return test.getTestAction(QuarantineTestAction.class);
-    }
+   public QuarantineTestAction getAction(CaseResult test) {
+      return test.getTestAction(QuarantineTestAction.class);
+   }
 
-    public List<CaseResult> getQuarantinedTests() {
-    	ArrayList<CaseResult> list = new ArrayList<CaseResult>();
-        for (TopLevelItem item : getOwner().getItems()) {
-            if (item instanceof Job) {
-                Job job = (Job) item;
-                Run lb = job.getLastBuild();
-                while (lb != null && (lb.hasntStartedYet() || lb.isBuilding()))
-                    lb = lb.getPreviousBuild();
+   public List<CaseResult> getQuarantinedTests() {
+      ArrayList<CaseResult> list = new ArrayList<CaseResult>();
+      for (TopLevelItem item : getOwner().getItems()) {
+         if (item instanceof Job) {
+            Job job = (Job) item;
+            Run lb = job.getLastBuild();
+            while (lb != null && (lb.hasntStartedYet() || lb.isBuilding()))
+               lb = lb.getPreviousBuild();
 
-                if (lb != null && lb.getAction(TestResultAction.class) != null) {
-                	for (SuiteResult suite: lb.getAction(TestResultAction.class).getResult().getSuites())
-                	{
-                		for (CaseResult test: suite.getCases())
-                		{
-                			QuarantineTestAction action = test.getTestAction(QuarantineTestAction.class);
-                			if (action != null && action.isQuarantined())
-                			{
-                				list.add(test);
-                			}
-                		}
-                	}
-                }
+            if (lb != null && lb.getAction(TestResultAction.class) != null) {
+               for (SuiteResult suite : lb.getAction(TestResultAction.class).getResult().getSuites()) {
+                  for (CaseResult test : suite.getCases()) {
+                     QuarantineTestAction action = test.getTestAction(QuarantineTestAction.class);
+                     if (action != null && action.isQuarantined()) {
+                        list.add(test);
+                     }
+                  }
+               }
             }
-        }
-        return list;
-    }
-    
-    public int getNumberOfSuccessivePasses(CaseResult test)
-    {
-    	int count = 0;
-    	    	
-    	for (TestResult result: test.getHistory().getList())
-    	{
-    		if (result.isPassed())
-    		{
-    			count++;
-    		}
-    		else
-    		{
-    			return count;
-    		}
-    	}
-    	return count;
-    }
-   
-    public String getDisplayName() {
-        return Messages.QuarantinedTestsReport_DisplayName();
-    }
+         }
+      }
+      return list;
+   }
+
+   public int getNumberOfSuccessivePasses(CaseResult test) {
+      int count = 0;
+
+      for (TestResult result : test.getHistory().getList()) {
+         if (result.isPassed()) {
+            count++;
+         } else {
+            return count;
+         }
+      }
+      return count;
+   }
+
+   public String getDisplayName() {
+      return Messages.QuarantinedTestsReport_DisplayName();
+   }
 
 }
