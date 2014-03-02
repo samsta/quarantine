@@ -38,6 +38,7 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
          for (CaseResult result : suite.getCases()) {
             QuarantineTestAction previousAction = null;
             CaseResult previous = result.getPreviousResult();
+            AbstractBuild<?, ?> previousBuild = build.getPreviousCompletedBuild();
 
             if (previous != null) {
                previousAction = previous.getTestAction(QuarantineTestAction.class);
@@ -45,23 +46,30 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
 
             // no immediate predecessor (e.g. because job failed or did not
             // run), try and go back in build history
-            while (previous == null && build != null) {
-               build = build.getPreviousCompletedBuild();
-               if (build != null) {
-                  listener.getLogger().println(
-                        "no immediate predecessor, but found previous build " + build + ", now try and find "
-                              + result.getId());
-                  if (build.getTestResultAction() != null) {
-                     listener.getLogger().println("build " + build + " does not have test results");
-                     hudson.tasks.test.TestResult tr = build.getTestResultAction().findCorrespondingResult(
-                           result.getId());
-                     if (tr != null) {
-                        listener.getLogger().println("it is " + tr.getDisplayName());
-                        previousAction = tr.getTestAction(QuarantineTestAction.class);
-                        break;
-                     }
+            while (previous == null && previousBuild != null) {
+               listener.getLogger().println(
+                     "no immediate predecessor, but found previous build " + previousBuild + ", now try and find "
+                           + result.getId());
+               if (previousBuild.getTestResultAction() != null) {
+                  hudson.tasks.test.TestResult tr = null;
+                  try {
+                     tr = previousBuild.getTestResultAction().findCorrespondingResult(
+                        result.getId());
+                  }
+                  catch (Exception e){
+                     listener.getLogger().println("could not find result for id " + result.getId() + " in build " + previousBuild + ": " + e.getMessage());
+                  }
+                  if (tr != null) {
+                     listener.getLogger().println("found " + tr.getDisplayName() + " in build " + previousBuild);
+                     previousAction = tr.getTestAction(QuarantineTestAction.class);
+                     break;
                   }
                }
+               else
+               {
+                  listener.getLogger().println("build " + previousBuild + " does not have test results");
+               }
+               previousBuild = previousBuild.getPreviousCompletedBuild();
             }
 
             if (previousAction != null && previousAction.isQuarantined()) {

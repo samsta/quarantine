@@ -178,6 +178,27 @@ public class QuarantineCoreTest extends HudsonTestCase {
       getResultsFromJUnitResult("junit-1-failure.xml");
    }
 
+   public void testUsesResultsFromLastGoodBuildWhenNoPreviousTestData() throws Exception {
+      getResultsFromJUnitResult("junit-1-failure.xml");
+      TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
+      for (SuiteResult suite : tr.getSuites()) {
+         for (CaseResult result : suite.getCases()) {
+            QuarantineTestAction action = result.getTestAction(QuarantineTestAction.class);
+            action.quarantine("user1", "reason");
+         }
+      }
+
+      getResultsFromJUnitResult("junit-dummy.xml"); // add a dummy file that doesn't have the test cases we're looking for
+      tr = getResultsFromJUnitResult("junit-1-failure.xml");
+
+      for (SuiteResult suite : tr.getSuites()) {
+         for (CaseResult result : suite.getCases()) {
+            QuarantineTestAction action  = result.getTestAction(QuarantineTestAction.class);
+            assertEquals("reason",action.getReason());
+         }
+      }
+   }
+
    public void testResultIsOnlyMarkedAsLatestIfLatest() throws Exception {
       FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
       TestResult tr1 = build.getAction(TestResultAction.class).getResult();
