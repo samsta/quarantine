@@ -13,6 +13,7 @@ import hudson.tasks.junit.TestDataPublisher;
 import hudson.tasks.junit.TestObject;
 import hudson.tasks.junit.TestResult;
 import hudson.tasks.junit.TestResultAction;
+import hudson.tasks.test.AbstractTestResultAction;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -50,10 +51,10 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
                listener.getLogger().println(
                      "no immediate predecessor, but found previous build " + previousBuild + ", now try and find "
                            + result.getId());
-               if (previousBuild.getTestResultAction() != null) {
+               if (previousBuild.getAction(AbstractTestResultAction.class) != null) {
                   hudson.tasks.test.TestResult tr = null;
                   try {
-                     tr = previousBuild.getTestResultAction().findCorrespondingResult(
+                     tr = previousBuild.getAction(AbstractTestResultAction.class).findCorrespondingResult(
                         result.getId());
                   }
                   catch (Exception e){
