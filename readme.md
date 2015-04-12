@@ -3,7 +3,7 @@ Jenkins Quarantine Plugin
 
 [![Build Status](http://buildhive.cloudbees.com/job/samsta/job/quarantine/badge/icon)](https://buildhive.cloudbees.com/job/samsta/job/quarantine/)
 
-*Work in progress - use at your own peril*
+*Work in progress - use at your own peril. Actually, it's currently broken!*
 
 A plugin for Jenkins CI that allows users to quarantine flakey tests cases.
 
