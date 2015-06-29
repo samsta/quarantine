@@ -59,7 +59,7 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
          try {
             action = new TestResultAction(build, result, listener);
          } catch (NullPointerException npe) {
-            throw new AbortException(hudson.tasks.junit.Messages.JUnitResultArchiver_BadXML(testResults));
+            throw new AbortException(Messages.QuarantinableJUnitResultArchiver_BadXML(testResults));
          }
          result.freeze(action);
          if (result.getPassCount() == 0 && result.getFailCount() == 0)
