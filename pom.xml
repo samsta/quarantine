@@ -69,5 +69,10 @@
   		<artifactId>mailer</artifactId>
   		<version>1.5</version>
   	</dependency>
+    <dependency>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>junit</artifactId>
+        <version>1.5</version>
+    </dependency>
   </dependencies>
 </project>
