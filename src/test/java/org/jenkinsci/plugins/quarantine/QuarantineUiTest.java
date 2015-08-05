@@ -12,9 +12,11 @@ import hudson.util.DescribableList;
 
 import org.jvnet.hudson.test.HudsonTestCase;
 import org.jvnet.hudson.test.TestBuilder;
+
 import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
+
 import java.io.IOException;
 
 import org.xml.sax.SAXException;
@@ -39,7 +41,9 @@ public class QuarantineUiTest extends HudsonTestCase {
       DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers = new DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>>(
             project);
       publishers.add(new QuarantineTestDataPublisher());
-      project.getPublishersList().add(new QuarantinableJUnitResultArchiver("*.xml", false, publishers));
+      QuarantinableJUnitResultArchiver archiver = new QuarantinableJUnitResultArchiver("*.xml");
+      archiver.setTestDataPublishers(publishers);
+      project.getPublishersList().add(archiver);
 
       hudson.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
       hudson.setSecurityRealm(createDummySecurityRealm());
