@@ -48,9 +48,6 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
             // no immediate predecessor (e.g. because job failed or did not
             // run), try and go back in build history
             while (previous == null && previousBuild != null) {
-               listener.getLogger().println(
-                     "no immediate predecessor, but found previous build " + previousBuild + ", now try and find "
-                           + result.getId());
                if (previousBuild.getAction(AbstractTestResultAction.class) != null) {
                   hudson.tasks.test.TestResult tr = null;
                   try {

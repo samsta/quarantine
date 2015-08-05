@@ -52,19 +52,13 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 		TestResult result = new JUnitParser(isKeepLongStdio()).parseResult(testResults, build, workspace, launcher, listener);
 
 		synchronized (build) {
-			// TODO can the build argument be omitted now, or is it used prior to the call to addAction?
 			TestResultAction action = build.getAction(TestResultAction.class);
-			boolean appending;
-			if (action == null) {
-				appending = false;
+			try {
 				action = new TestResultAction(build, result, listener);
-			} else {
-				appending = true;
-				result.freeze(action);
-				listener.getLogger().println("[Quarantine]: FIXME: tried to merge result which is not supported");
-				// FIXME: following is not accessible
-				//action.mergeResult(result, listener);
+			} catch (NullPointerException npe) {
+				throw new AbortException(Messages.QuarantinableJUnitResultArchiver_BadXML(testResults));
 			}
+			result.freeze(action);
 			action.setHealthScaleFactor(getHealthScaleFactor()); // overwrites previous value if appending
 			if (result.isEmpty()) {
 				if (build.getResult() == Result.FAILURE) {
@@ -78,7 +72,8 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 
 			// TODO: Move into JUnitParser [BUG 3123310]
 			// FIXME: ideally, we'd use action.getData() so we can add to the data, but it's not accessible.
-			//   create a new list of data - not sure what the implications are
+			//   create a new list of data - not sure what the implications are, but that's how the quarantine
+			//   plugin worked before
 			List<Data> data = new ArrayList<Data>();
 			if (getTestDataPublishers() != null) {
 				for (TestDataPublisher tdp : getTestDataPublishers()) {
@@ -90,11 +85,7 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 				action.setData(data);
 			}
 
-			if (appending) {
-				build.save();
-			} else {
-				build.addAction(action);
-			}
+			build.addAction(action);
 
 			if (action.getResult().getFailCount() > 0)
 			{
