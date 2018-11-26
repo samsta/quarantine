@@ -1,7 +1,7 @@
 package org.jenkinsci.plugins.quarantine;
 
-import hudson.model.BuildListener;
 import hudson.model.Hudson;
+import hudson.model.TaskListener;
 import hudson.model.User;
 import hudson.tasks.Mailer;
 import hudson.tasks.junit.CaseResult;
@@ -53,7 +53,7 @@ public class MailNotifier {
    HashMap<String, List<ResultActionPair>> emailsToSend = new HashMap<String, List<ResultActionPair>>();
    PrintStream logger;
 
-   public MailNotifier(BuildListener build_listener) {
+   public MailNotifier(TaskListener build_listener) {
       logger = build_listener.getLogger();
    }
 

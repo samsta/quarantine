@@ -128,15 +128,16 @@ public class QuarantineCoreTest {
       }
    }
 
-   //mailer is currently disabled
-   @Ignore
+   @Test
    public void testNoTestsHaveQuarantineActionForStandardPublisher() throws Exception {
       project.getPublishersList().remove(QuarantinableJUnitResultArchiver.class);
 
       DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers = new DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>>(
               project);
       publishers.add(new QuarantineTestDataPublisher());
-      project.getPublishersList().add(new JUnitResultArchiver("*.xml", false, publishers));
+      JUnitResultArchiver jUnitResultArchiver = new JUnitResultArchiver("*.xml");
+      jUnitResultArchiver.setTestDataPublishers(publishers);
+      project.getPublishersList().add(jUnitResultArchiver);
 
       TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
 
@@ -333,8 +334,7 @@ public class QuarantineCoreTest {
       assertEquals(1, report.getNumberOfSuccessivePasses(report.getQuarantinedTests().get(0)));
    }
 
-   //mailer is currently disabled
-   @Ignore
+   @Test
    public void testSendsEmailWhenQuarantinedFails() throws Exception {
       Mailbox.clearAll();
       TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");
@@ -358,8 +358,7 @@ public class QuarantineCoreTest {
       assertEquals(0, inbox.size());
    }
 
-   //mailer is currently disabled
-   @Ignore
+   @Test
    public void testTestEmailsAreCollatedWhenMultipleQuarantinedFail() throws Exception {
       Mailbox.clearAll();
       TestResult tr = getResultsFromJUnitResult("junit-1-failure.xml");

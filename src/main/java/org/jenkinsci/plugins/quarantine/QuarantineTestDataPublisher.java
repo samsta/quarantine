@@ -34,8 +34,7 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
                                   TaskListener listener, TestResult testResult) {
       Data data = new Data(run);
 
-      // todo - review and re-enable mailer
-      //MailNotifier notifier = new MailNotifier(listener);
+      MailNotifier notifier = new MailNotifier(listener);
 
       for (SuiteResult suite : testResult.getSuites()) {
          for (CaseResult result : suite.getCases()) {
@@ -78,15 +77,13 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
                data.addQuarantine(result.getId(), action);
 
                // send email if failed
-               // todo - review and re-enable mailer
-//               if (!result.isPassed()) {
-//                  notifier.addResult(result, action);
-//               }
+               if (!result.isPassed()) {
+                  notifier.addResult(result, action);
+               }
             }
          }
       }
-      // todo - review and re-enable mailer
-      //notifier.sendEmails();
+      notifier.sendEmails();
       return data;
 
 
@@ -105,13 +102,13 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
       @Override
       public List<TestAction> getTestAction(@SuppressWarnings("deprecation")TestObject testObject) {
 
-         //todo - review this code from previous version and re-enable the statement
-//         if (build.getParent().getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
-//            // only display if QuarantinableJUnitResultArchiver chosen, to avoid
-//            // confusion
-//            System.out.println("not right publisher");
-//            return Collections.emptyList();
-//         }
+         Project project = (Project) build.getParent();
+         if (project != null &&  project.getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
+            // only display if QuarantinableJUnitResultArchiver chosen, to avoid
+            // confusion
+            System.out.println("not right publisher");
+            return Collections.emptyList();
+         }
 
          String id = testObject.getId();
          QuarantineTestAction result = quarantines.get(id);
