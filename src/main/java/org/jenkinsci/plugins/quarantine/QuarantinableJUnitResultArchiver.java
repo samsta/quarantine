@@ -43,8 +43,8 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 	@Override
 	public void perform(Run build, FilePath workspace, Launcher launcher,
 			TaskListener listener) throws InterruptedException, IOException {
-				
-		listener.getLogger().println(hudson.tasks.junit.Messages.JUnitResultArchiver_Recording());
+
+		listener.getLogger().println("JUnitResultArchiver.Recording");
 
 		final String testResults = build.getEnvironment(listener).expand(getTestResults());
 
@@ -67,7 +67,7 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 					return;
 				}
 				// most likely a configuration error in the job - e.g. false pattern to match the JUnit result files
-				throw new AbortException(hudson.tasks.junit.Messages.JUnitResultArchiver_ResultIsEmpty());
+				throw new AbortException("JUnitResultArchiver.ResultIsEmpty");
 			}
 
 			// TODO: Move into JUnitParser [BUG 3123310]
@@ -102,7 +102,7 @@ public class QuarantinableJUnitResultArchiver extends JUnitResultArchiver {
 
 				int remaining = action.getResult().getFailCount() - quarantined;
 				listener.getLogger().println("[Quarantine]: " + remaining + " unquarantined failures remaining");
-				
+
 				if (remaining > 0)
 					build.setResult(Result.UNSTABLE);
 			}
