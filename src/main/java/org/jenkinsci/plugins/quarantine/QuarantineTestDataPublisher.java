@@ -4,13 +4,7 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.*;
-import hudson.tasks.junit.CaseResult;
-import hudson.tasks.junit.SuiteResult;
-import hudson.tasks.junit.TestAction;
-import hudson.tasks.junit.TestDataPublisher;
-import hudson.tasks.junit.TestObject;
-import hudson.tasks.junit.TestResult;
-import hudson.tasks.junit.TestResultAction;
+import hudson.tasks.junit.*;
 import hudson.tasks.test.AbstractTestResultAction;
 
 import java.io.IOException;
@@ -102,16 +96,25 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
       @Override
       public List<TestAction> getTestAction(@SuppressWarnings("deprecation")TestObject testObject) {
 
-         Project project = (Project) build.getParent();
-         if (project != null &&  project.getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
-            // only display if QuarantinableJUnitResultArchiver chosen, to avoid
-            // confusion
-            System.out.println("not right publisher");
-            return Collections.emptyList();
-         }
+         if ((build.getParent() instanceof Project))
+         {
+            Project project = (Project) build.getParent();
+            if (project != null &&  project.getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
+               // only display if QuarantinableJUnitResultArchiver chosen, to avoid
+               // confusion
+               System.out.println("not right publisher");
+               return Collections.emptyList();
+         }}
 
+         final String prefix = "junit";
          String id = testObject.getId();
          QuarantineTestAction result = quarantines.get(id);
+
+         // In Hudson 1.347 or so, IDs changed, and a junit/ prefix was added.
+         // Attempt to fix this backward-incompatibility
+         if (result == null && id.startsWith(prefix)) {
+            result = quarantines.get(id.substring(prefix.length()));
+         }
 
          if (result != null) {
             return Collections.singletonList(result);
