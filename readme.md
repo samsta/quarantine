@@ -65,4 +65,4 @@ Disabled the maven test injection `<maven-hpi-plugin.disabledTestInjection>true<
 Notes
 -----
 
-Compatible with org.jenkins-ci.plugins 3.19 and to be used as a pipeline step.
+Compatible with org.jenkins-ci.plugins 3.19 and it can be used as a pipeline step.
