@@ -1,15 +1,3 @@
-
-MODIFICATIONS IN THE BRANCH
-===========================
-
-Purpose of this forking:
-  - make it compatible with the latest version oj Jenkins 2.138.3 at the time of writing this
-  - make it compatible with org.jenkins-ci.plugins 3.19
-  - make it compatible with pipelines
-
-Known issues:
-  - had to disable the maven test injection didn't care at this time about those tests might need re-write
-
 Jenkins Quarantine Plugin
 =========================
 
@@ -71,3 +59,10 @@ Piggybacking this functionality on the regular JUnit test report seems weird as 
 
 Also, this would make this whole approach less coupled to JUnit test reports, making it available to other test report publishers.
 
+Disabled the maven test injection `<maven-hpi-plugin.disabledTestInjection>true</maven-hpi-plugin.disabledTestInjection>`
+
+
+Notes
+-----
+
+Compatible with org.jenkins-ci.plugins 3.19 and to be used as a pipeline step.
