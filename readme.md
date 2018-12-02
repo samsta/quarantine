@@ -1,7 +1,7 @@
 Jenkins Quarantine Plugin
 =========================
 
-[![Build Status](http://buildhive.cloudbees.com/job/samsta/job/quarantine/badge/icon)](https://buildhive.cloudbees.com/job/samsta/job/quarantine/)
+[![Build Status](https://travis-ci.com/samsta/quarantine.svg?branch=master)](https://travis-ci.com/samsta/quarantine)
 
 *Work in progress - use at your own peril*
 
