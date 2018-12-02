@@ -1,15 +1,12 @@
 package org.jenkinsci.plugins.quarantine;
 
-import hudson.model.BuildListener;
 import hudson.model.Hudson;
+import hudson.model.TaskListener;
 import hudson.model.User;
 import hudson.tasks.Mailer;
 import hudson.tasks.junit.CaseResult;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,30 +27,13 @@ import org.xml.sax.InputSource;
 
 import jenkins.model.JenkinsLocationConfiguration;
 
+
 public class MailNotifier {
-
-   public class ResultActionPair {
-      private final CaseResult result;
-      private final QuarantineTestAction action;
-
-      public ResultActionPair(CaseResult result, QuarantineTestAction action) {
-         this.result = result;
-         this.action = action;
-      }
-
-      public CaseResult getResult() {
-         return result;
-      }
-
-      public QuarantineTestAction getAction() {
-         return action;
-      }
-   }
 
    HashMap<String, List<ResultActionPair>> emailsToSend = new HashMap<String, List<ResultActionPair>>();
    PrintStream logger;
 
-   public MailNotifier(BuildListener build_listener) {
+   public MailNotifier(TaskListener build_listener) {
       logger = build_listener.getLogger();
    }
 
@@ -75,10 +55,6 @@ public class MailNotifier {
    public String getEmailAddress(String username) {
       String address = null;
       User u = User.get(username);
-      if (u == null) {
-         println("failed obtaining user for name " + username);
-         return address;
-      }
       Mailer.UserProperty p = u.getProperty(Mailer.UserProperty.class);
       if (p == null) {
          println("failed obtaining email address for user " + username);
@@ -99,7 +75,7 @@ public class MailNotifier {
       }
    }
 
-   private String renderEmail(String username, List<ResultActionPair> results) {
+   private String renderEmail(String username, List<ResultActionPair> results) throws UnsupportedEncodingException {
       ByteArrayOutputStream output;
       try {
          Script script;
@@ -126,7 +102,7 @@ public class MailNotifier {
          println("[Quarantine]: converting jelly: " + e.toString());
          return null;
       }
-      return output.toString();
+      return output.toString("UTF-8");
    }
 
    public void sendEmail(String username, List<ResultActionPair> results) {
@@ -138,7 +114,13 @@ public class MailNotifier {
       MimeMessage msg = new MimeMessage(Mailer.descriptor().createSession());
       try {
 
-         msg.setFrom(new InternetAddress(JenkinsLocationConfiguration.get().getAdminAddress()));
+         JenkinsLocationConfiguration config = JenkinsLocationConfiguration.get();
+         if (config == null) {
+            println("[Quarantine]: unable to render message due to a null configuration to obtain the admin address.");
+            return;
+         }
+
+         msg.setFrom(new InternetAddress(config.getAdminAddress()));
          msg.setSentDate(new Date());
          msg.setRecipients(Message.RecipientType.TO, address);
          msg.setSubject("Failure of quarantined tests");
@@ -155,6 +137,8 @@ public class MailNotifier {
          println("[Quarantine]: sent email to " + address);
       } catch (MessagingException e) {
          println("[Quarantine]: failed sending email: " + e.toString());
+      } catch (UnsupportedEncodingException e) {
+         e.printStackTrace();
       }
    }
 

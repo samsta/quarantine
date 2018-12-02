@@ -1,18 +1,10 @@
 package org.jenkinsci.plugins.quarantine;
 
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.Descriptor;
-import hudson.model.Saveable;
-import hudson.tasks.junit.CaseResult;
-import hudson.tasks.junit.SuiteResult;
-import hudson.tasks.junit.TestAction;
-import hudson.tasks.junit.TestDataPublisher;
-import hudson.tasks.junit.TestObject;
-import hudson.tasks.junit.TestResult;
-import hudson.tasks.junit.TestResultAction;
+import hudson.model.*;
+import hudson.tasks.junit.*;
 import hudson.tasks.test.AbstractTestResultAction;
 
 import java.io.IOException;
@@ -23,6 +15,8 @@ import java.util.Map;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import javax.annotation.Nonnull;
+
 public class QuarantineTestDataPublisher extends TestDataPublisher {
 
    @DataBoundConstructor
@@ -30,16 +24,17 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
    }
 
    @Override
-   public Data getTestData(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener, TestResult testResult) {
+   public Data contributeTestData(Run<?, ?> run, @Nonnull FilePath workspace, Launcher launcher,
+                                  TaskListener listener, TestResult testResult) {
+      Data data = new Data(run);
 
-      Data data = new Data(build);
       MailNotifier notifier = new MailNotifier(listener);
 
       for (SuiteResult suite : testResult.getSuites()) {
          for (CaseResult result : suite.getCases()) {
             QuarantineTestAction previousAction = null;
             CaseResult previous = result.getPreviousResult();
-            AbstractBuild<?, ?> previousBuild = build.getPreviousCompletedBuild();
+            Run previousBuild = run.getPreviousCompletedBuild();
 
             if (previous != null) {
                previousAction = previous.getTestAction(QuarantineTestAction.class);
@@ -52,7 +47,7 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
                   hudson.tasks.test.TestResult tr = null;
                   try {
                      tr = previousBuild.getAction(AbstractTestResultAction.class).findCorrespondingResult(
-                        result.getId());
+                             result.getId());
                   }
                   catch (Exception e){
                      listener.getLogger().println("could not find result for id " + result.getId() + " in build " + previousBuild + ": " + e.getMessage());
@@ -84,42 +79,54 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
       }
       notifier.sendEmails();
       return data;
+
+
    }
 
    public static class Data extends TestResultAction.Data implements Saveable {
 
-      private Map<String, QuarantineTestAction> quarantines = new HashMap<String, QuarantineTestAction>();
+      private Map<String, QuarantineTestAction> quarantines = new HashMap<>();
 
-      private final AbstractBuild<?, ?> build;
+      private final Run<?, ?> build;
 
-      public Data(AbstractBuild<?, ?> build) {
+      Data(Run<?, ?> build) {
          this.build = build;
       }
 
       @Override
-      public List<TestAction> getTestAction(TestObject testObject) {
+      public List<TestAction> getTestAction(@SuppressWarnings("deprecation")TestObject testObject) {
 
-         if (build.getParent().getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
-            // only display if QuarantinableJUnitResultArchiver chosen, to avoid
-            // confusion
-            System.out.println("not right publisher");
-            return Collections.emptyList();
-         }
+         if ((build.getParent() instanceof Project))
+         {
+            Project project = (Project) build.getParent();
+            if (project != null &&  project.getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
+               // only display if QuarantinableJUnitResultArchiver chosen, to avoid
+               // confusion
+               System.out.println("not right publisher");
+               return Collections.emptyList();
+         }}
 
+         final String prefix = "junit";
          String id = testObject.getId();
          QuarantineTestAction result = quarantines.get(id);
 
+         // In Hudson 1.347 or so, IDs changed, and a junit/ prefix was added.
+         // Attempt to fix this backward-incompatibility
+         if (result == null && id.startsWith(prefix)) {
+            result = quarantines.get(id.substring(prefix.length()));
+         }
+
          if (result != null) {
-            return Collections.<TestAction> singletonList(result);
+            return Collections.singletonList(result);
          }
 
          if (testObject instanceof CaseResult) {
-            return Collections.<TestAction> singletonList(new QuarantineTestAction(this, id));
+            return Collections.singletonList(new QuarantineTestAction(this, id));
          }
          return Collections.emptyList();
       }
 
-      public boolean isLatestResult() {
+      boolean isLatestResult() {
          return build.getParent().getLastCompletedBuild() == build;
       }
 

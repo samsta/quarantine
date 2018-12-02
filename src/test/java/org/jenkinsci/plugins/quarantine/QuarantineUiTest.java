@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.quarantine;
 
+import com.gargoylesoftware.htmlunit.html.*;
 import hudson.model.FreeStyleBuild;
 import hudson.tasks.junit.TestResult;
 import hudson.tasks.junit.TestResultAction;
@@ -10,7 +11,10 @@ import hudson.security.FullControlOnceLoggedInAuthorizationStrategy;
 import hudson.tasks.junit.TestDataPublisher;
 import hudson.util.DescribableList;
 
-import org.jvnet.hudson.test.HudsonTestCase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.TestBuilder;
 
 import hudson.Launcher;
@@ -19,41 +23,40 @@ import hudson.model.AbstractBuild;
 
 import java.io.IOException;
 
-import org.xml.sax.SAXException;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
-import com.gargoylesoftware.htmlunit.html.HtmlButton;
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlTextArea;
-
-public class QuarantineUiTest extends HudsonTestCase {
+public class QuarantineUiTest {
    private String projectName = "x";
-   protected String quarantineText = "quarantineReason";
-   protected FreeStyleProject project;
+   private String quarantineText = "quarantineReason";
+   private FreeStyleProject project;
 
-   @Override
-   protected void setUp() throws Exception {
-      super.setUp();
+
+   @Rule
+   public JenkinsRule j = new JenkinsRule();
+
+   @Before
+   public void setUp() throws Exception {
       java.util.logging.Logger.getLogger("com.gargoylesoftware.htmlunit").setLevel(java.util.logging.Level.SEVERE);
 
-      project = createFreeStyleProject(projectName);
-      DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers = new DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>>(
-            project);
+      project = j.createFreeStyleProject(projectName);
+      DescribableList<TestDataPublisher, Descriptor<TestDataPublisher>> publishers = new DescribableList<>(
+              project);
       publishers.add(new QuarantineTestDataPublisher());
       QuarantinableJUnitResultArchiver archiver = new QuarantinableJUnitResultArchiver("*.xml");
       archiver.setTestDataPublishers(publishers);
       project.getPublishersList().add(archiver);
 
-      hudson.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
-      hudson.setSecurityRealm(createDummySecurityRealm());
+      j.jenkins.setAuthorizationStrategy(new FullControlOnceLoggedInAuthorizationStrategy());
+      j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
    }
 
-   protected FreeStyleBuild runBuildWithJUnitResult(final String xmlFileName) throws Exception {
+   private FreeStyleBuild runBuildWithJUnitResult(final String xmlFileName) throws Exception {
       FreeStyleBuild build;
       project.getBuildersList().add(new TestBuilder() {
          public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-               throws InterruptedException, IOException {
+                 throws InterruptedException, IOException {
             build.getWorkspace().child("junit.xml").copyFrom(getClass().getResource(xmlFileName));
             return true;
          }
@@ -67,6 +70,7 @@ public class QuarantineUiTest extends HudsonTestCase {
       return runBuildWithJUnitResult(xmlFileName).getAction(TestResultAction.class).getResult();
    }
 
+   @Test
    public void testTextSummaryForUnquarantinedTestAuthenticated() throws Exception {
       FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
       TestResult tr = build.getAction(TestResultAction.class).getResult();
@@ -75,6 +79,7 @@ public class QuarantineUiTest extends HudsonTestCase {
       assertTrue(pageShowsText(page, "This test was not quarantined. Quarantine it."));
    }
 
+   @Test
    public void testTextSummaryForUnquarantinedTestNotAuthenticated() throws Exception {
       FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
       TestResult tr = build.getAction(TestResultAction.class).getResult();
@@ -84,6 +89,7 @@ public class QuarantineUiTest extends HudsonTestCase {
       assertFalse(pageShowsText(page, "Quarantine it."));
    }
 
+   @Test
    public void testWhenQuarantiningTestSaysQuarantinedBy() throws Exception {
       FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
       TestResult tr = build.getAction(TestResultAction.class).getResult();
@@ -94,17 +100,17 @@ public class QuarantineUiTest extends HudsonTestCase {
       assertTrue(pageShowsText(page, "This test was quarantined by user1"));
    }
 
+   @Test
    public void testCanNavigateToQuarantineReport() throws Exception {
       FreeStyleBuild build = runBuildWithJUnitResult("junit-1-failure.xml");
-      WebClient wc = new WebClient();
+      JenkinsRule.WebClient wc = j.createWebClient();
       wc.login("user1", "user1");
       HtmlPage page = wc.goTo("quarantine/");
       assertNotNull(page);
    }
 
-   private HtmlPage whenNavigatingToTestCase(CaseResult testCase, boolean authenticate) throws Exception, IOException,
-         SAXException {
-      WebClient wc = new WebClient();
+   private HtmlPage whenNavigatingToTestCase(CaseResult testCase, boolean authenticate) throws Exception {
+      JenkinsRule.WebClient wc = j.createWebClient();
       if (authenticate) {
          wc.login("user1", "user1");
       }
@@ -113,12 +119,11 @@ public class QuarantineUiTest extends HudsonTestCase {
    }
 
    private void whenQuarantiningTestOnPage(HtmlPage page) throws Exception {
-      ((HtmlAnchor) page.getElementById("quarantine")).click();
+      (page.getElementById("quarantine")).click();
       HtmlForm form = page.getFormByName("quarantine");
-      HtmlTextArea textArea = (HtmlTextArea) last(form.selectNodes(".//textarea"));
+      HtmlTextArea textArea = form.getTextAreaByName("reason");
       textArea.setText(quarantineText);
-
-      form.submit((HtmlButton) last(form.selectNodes(".//button")));
+      HtmlFormUtil.submit(form, j.last(form.getHtmlElementsByTagName("button")));
    }
 
    private boolean pageShowsText(HtmlPage page, String text) {

@@ -59,3 +59,10 @@ Piggybacking this functionality on the regular JUnit test report seems weird as 
 
 Also, this would make this whole approach less coupled to JUnit test reports, making it available to other test report publishers.
 
+Disabled the maven test injection `<maven-hpi-plugin.disabledTestInjection>true</maven-hpi-plugin.disabledTestInjection>`
+
+
+Notes
+-----
+
+Compatible with org.jenkins-ci.plugins 3.19 and it can be used as a pipeline step.

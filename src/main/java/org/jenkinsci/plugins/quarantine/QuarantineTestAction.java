@@ -86,7 +86,7 @@ public class QuarantineTestAction extends TestAction implements BuildBadgeAction
    }
 
    public Date getDate() {
-      return quarantineDate;
+      return new Date(this.quarantineDate.getTime());
    }
 
    public boolean hasReason() {
@@ -121,7 +121,7 @@ public class QuarantineTestAction extends TestAction implements BuildBadgeAction
       this.quarantined = true;
       this.quarantinedBy = quarantinedBy;
       this.reason = reason;
-      this.quarantineDate = date;
+      this.quarantineDate = new Date(date.getTime());
       owner.addQuarantine(testObjectId, this);
    }
 
