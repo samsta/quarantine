@@ -102,7 +102,6 @@ public class QuarantineTestDataPublisher extends TestDataPublisher {
             if (project != null &&  project.getPublishersList().get(QuarantinableJUnitResultArchiver.class) == null) {
                // only display if QuarantinableJUnitResultArchiver chosen, to avoid
                // confusion
-               System.out.println("not right publisher");
                return Collections.emptyList();
          }}
 
