@@ -12,5 +12,4 @@ deploy:
   file: target/quarantine.hpi
   on:
     repo: samsta/quarantine
-    tags: true
   skip_cleanup: true
