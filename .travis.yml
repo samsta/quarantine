@@ -1,1 +1,16 @@
 language: java
+before_deploy:
+  # Set up git user name and tag this commit
+  - git config --local user.name "samsta"
+  - git config --local user.email "samsta@me.com"
+  - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
+  - git tag $TRAVIS_TAG
+deploy:
+  provider: releases
+  api_key:
+    secure: coqIbkOvFpiHDUJFXafNMfV719kHURqohNxeHP40SLNsGdpnArh/jtR5bsZjQvuxAoq08yCIGuopF1q9ARZiJevLM7NOMaUSnFpi03SkeNzaR/QKu+/DH75K8Y1+dFz7vz2nfVHzoPc9JY07ukLS45gbNaP+dPb8OT2jAMCSEcfMYzWrmCnWyvGAw/sfLNtj8HEETlbgfil3dJMFhlWhRMkx7rdThm4yg43TzanuZhBm/m0BXbq7Y4Bko+amgTXiOAs3/GYENpULhrKyiwCtOtDEQnR4tYvODD9vGIfIXf23LAxA9TE8UYjd1VKpoKcrC88qAiQpY27Bm5bbVGc7iS8KUofktjd0jVJqLvCN6tUbZyP/u8UBAAv+gm0XqblI5YpUb7qaGNHlApeSJKCV/cSALTA/GlBvZchQUr6neJMTeNurqCE1SNBzQndIuVRItRSnY1fW246LWK4Iwqjl4piJPjYz+ssUYzqrGa4gSg91b7medNqHDmnA9vVb9LJLoFpcWRZy52YWN08qOaCPcA0odb7BULaIiRx0dR6Rpn0RN1w15yGyqgwpCrnoPaaDFr9XPC59jj4Qw5OtTgmaMCx82phQ1Uy4bs3z0guOqcoKU4PiYIr1lhn2fPDWmyEeNiLPi6KteE5GowQKNUvvR8qgCb/OEDE4XY3KvwBW2go=
+  file: target/quarantine.hpi
+  on:
+    repo: samsta/quarantine
+    tags: true
+  skip_cleanup: true
